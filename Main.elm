@@ -103,7 +103,6 @@ update msg model =
 
                 duration =
                     time - startedAt
-
             in
                 ( { model | requestState = Complete duration }, Cmd.none )
 
@@ -241,22 +240,22 @@ viewTopicSelection showFreeText currentTopic =
         div
             []
             [ input
-                [ id "checkbox-cats", type_ "checkbox", checked (isChecked Cats), onCheck (always (SetTopic Cats)) ]
+                [ id "radio-cats", type_ "radio", checked (isChecked Cats), onCheck (always (SetTopic Cats)) ]
                 []
-            , label [ for "checkbox-cats" ] [ text "Cats" ]
+            , label [ for "radio-cats" ] [ text "Cats" ]
             , input
-                [ id "checkbox-dogs", type_ "checkbox", checked (isChecked Dogs), onCheck (always (SetTopic Dogs)) ]
+                [ id "radio-dogs", type_ "radio", checked (isChecked Dogs), onCheck (always (SetTopic Dogs)) ]
                 []
-            , label [ for "checkbox-dogs" ] [ text "Dogs" ]
+            , label [ for "radio-dogs" ] [ text "Dogs" ]
             , input
-                [ id "checkbox-dan", type_ "checkbox", checked (isChecked Dan), onCheck (always (SetTopic Dan)) ]
+                [ id "radio-dan", type_ "radio", checked (isChecked Dan), onCheck (always (SetTopic Dan)) ]
                 []
-            , label [ for "checkbox-dan" ] [ text "Dan" ]
+            , label [ for "radio-dan" ] [ text "Dan" ]
             , input
-                [ id "checkbox-other", type_ "checkbox", checked (isChecked (Other "")) ]
+                [ id "radio-other", type_ "radio", checked (isChecked (Other "")), onCheck (always (SetTopic (Other ""))) ]
                 []
             , label
-                [ for "checkbox-other" ]
+                [ for "radio-other" ]
                 [ text "Other"
                 , input
                     [ type_ "text", placeholder "Topic", onInput (\value -> SetTopic (Other value)) ]
