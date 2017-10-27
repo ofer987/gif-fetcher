@@ -3,10 +3,10 @@ module Main exposing (..)
 import Html exposing (..)
 import Html.Attributes exposing (..)
 import Html.Events exposing (..)
-import Time
+import Time exposing (Time)
 import Task exposing (andThen, perform)
 import Http
-import Json.Decode as Decode
+import Json.Decode as Json
 
 
 -- INIT
@@ -53,17 +53,18 @@ init =
 
 type RequestState
     = Initial
-    | InProgress Time.Time
+    | InProgress Time
     | NotFound
-    | Complete Time.Time
+    | Complete Time
 
 
 type Msg
     = SetTopic Topic
     | MorePlease
-    | SendRequest Time.Time
+    | SetStartTime Time
     | ReceiveResponse (Result Http.Error (Maybe String))
-    | SetEndTime Time.Time Time.Time
+    | GetEndTime
+    | SetEndTime Time
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -73,12 +74,24 @@ update msg model =
             ( { model | topic = topic }, Cmd.none )
 
         MorePlease ->
-            ( { model | requestState = InProgress 0 }, perform SendRequest Time.now )
+            ( { model | requestState = InProgress 0 }, perform SetStartTime Time.now )
 
-        SendRequest time ->
+        SetStartTime time ->
             ( { model | gifUrl = "", requestState = InProgress time }, getRandomGif model.topic )
 
         ReceiveResponse (Ok (Just newUrl)) ->
+            ( { model | gifUrl = newUrl }, Cmd.none )
+
+        ReceiveResponse (Ok Nothing) ->
+            ( { model | gifUrl = "", requestState = NotFound }, Cmd.none )
+
+        ReceiveResponse (Err error) ->
+            ( { model | error = Just error }, Cmd.none )
+
+        GetEndTime ->
+            ( model, perform SetEndTime Time.now )
+
+        SetEndTime time ->
             let
                 startedAt =
                     case model.requestState of
@@ -88,25 +101,9 @@ update msg model =
                         _ ->
                             0
 
-                endedAt =
-                    Time.now
-
-                cmd =
-                    endedAt
-                        |> perform (SetEndTime startedAt)
-            in
-                ( { model | gifUrl = newUrl }, cmd )
-
-        ReceiveResponse (Ok Nothing) ->
-            ( { model | gifUrl = "", requestState = NotFound }, Cmd.none )
-
-        ReceiveResponse (Err error) ->
-            ( { model | error = Just error }, Cmd.none )
-
-        SetEndTime startedAt endedAt ->
-            let
                 duration =
-                    endedAt - startedAt
+                    time - startedAt
+
             in
                 ( { model | requestState = Complete duration }, Cmd.none )
 
@@ -137,10 +134,10 @@ getRandomGif topic =
         Http.send ReceiveResponse request
 
 
-decodeGifUrl : Decode.Decoder (Maybe String)
+decodeGifUrl : Json.Decoder (Maybe String)
 decodeGifUrl =
-    Decode.at [ "data", "image_url" ] Decode.string
-        |> Decode.maybe
+    Json.at [ "data", "image_url" ] Json.string
+        |> Json.maybe
 
 
 
@@ -156,6 +153,11 @@ subscriptions model =
 -- VIEW
 
 
+onLoad : Msg -> Attribute Msg
+onLoad message =
+    on "load" (Json.succeed message)
+
+
 view : Model -> Html Msg
 view model =
     div []
@@ -165,7 +167,7 @@ view model =
             [ button [ onClick MorePlease ] [ text "More Please!" ]
             ]
         , div []
-            [ img [ src model.gifUrl ] []
+            [ img [ src model.gifUrl, onLoad GetEndTime ] []
             , div [] [ viewDuration model.requestState ]
             , viewError model.error
             ]
@@ -209,7 +211,7 @@ viewDuration requestState =
         Complete duration ->
             let
                 message =
-                    "It took " ++ (toString duration) ++ " milliseconds"
+                    "It took " ++ (toString (Time.inSeconds duration)) ++ " seconds"
             in
                 text message
 
